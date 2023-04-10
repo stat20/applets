@@ -159,10 +159,15 @@ server <- function(input, output, session) {
   
   central_limit_thereom <- reactive({
     
+    f <- replicate(input$clt_draws,
+              mean(sample(pop()$pop, input$n, replace = TRUE)))
+    g <- replicate(input$clt_draws,
+                   mean(sample(pop()$inv_pop, input$n, replace = TRUE)))
     
-    replicate(input$clt_draws,
-              mean(sample(pop(), input$n, replace = TRUE)))
+    cltdf <- data.frame(f = f,
+                        g = g)
     
+    clt
   })
   
   output$bs_or_clt <- renderPlot({
