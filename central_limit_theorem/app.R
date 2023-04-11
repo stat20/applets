@@ -23,7 +23,9 @@ ui <- fluidPage(
                               'median',
                               'sum',
                               'max',
-                              'min'))
+                              'min')),
+      actionButton(inputId = "go",
+                   label = "Simulate")
     ),
     mainPanel(
       plotOutput("CLT")
@@ -34,7 +36,7 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
-  data <- reactive({
+  data <- eventReactive(input$go, {
     mean <- replicate(input$samples,
                       mean((sample(1:input$pop,
                                    input$sample_size,
@@ -102,7 +104,8 @@ server <- function(input, output, session) {
       
     
     
-  })
+  }) %>% 
+    bindEvent(input$go)
   
 }
 

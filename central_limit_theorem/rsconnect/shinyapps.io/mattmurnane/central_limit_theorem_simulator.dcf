@@ -5,9 +5,9 @@ account: mattmurnane
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8823615
-bundleId: 7077238
+bundleId: 7077292
 url: https://mattmurnane.shinyapps.io/central_limit_theorem_simulator/
-when: 1681248220.40088
-lastSyncTime: 1681248220.40091
+when: 1681249010.52778
+lastSyncTime: 1681249010.52781
 asMultiple: FALSE
 asStatic: FALSE
