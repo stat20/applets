@@ -18,7 +18,7 @@ ui <- fluidPage(
                    value = 1),
       radioButtons(inputId = "invert",
                    label = "Invert the population (this only changes the distribution, allowing population to be more easily left skewd)",
-                   choices = c("non - inverted",
+                   choices = c("non-inverted",
                                "invert"))
       ),
       column(7,
@@ -46,14 +46,20 @@ ui <- fluidPage(
                        choices = c("Bootstrap",
                                    "Central Limit Thereom")),
            uiOutput(outputId = "options"),
-           actionButton(inputId = "sim",
-                        label = "produce simulation")
            ),
     column(7,
            plotOutput(outputId = "bs_or_clt"),
            )
-  )
-)
+  ),
+  br(),
+  fluidRow(h3("Statistics"),
+           column(4,
+                  verbatimTextOutput(outputId = "mew")),
+           column(4,
+                  verbatimTextOutput(outputId = "bsmean")),
+           column(4,
+                  verbatimTextOutput(outputId = "cltmean"))
+  ))
 
 
 server <- function(input, output, session) {
@@ -141,11 +147,13 @@ server <- function(input, output, session) {
         geom_histogram(color = "white",
                        fill = "green3")+
         theme_classic()+
-        xlab("")
+        xlab("")+
+        ggtitle("A Sample")
       
     }
     
-  })
+  }) %>% 
+    bindEvent(input$make_sample)
   
   output$options <- renderUI({
       
@@ -160,20 +168,24 @@ server <- function(input, output, session) {
         numericInput(inputId = "boot_reps",
                      label = "How many bootstrap reps would you like",
                      min = 1,
-                     value = 100))
+                     value = 100),
+      actionButton(inputId = "sim1",
+                   label = "produce simulation"))
       
     }else if(input$switch1 == "Central Limit Thereom"){
       
-        numericInput(inputId = "clt_draws",
-                     label = "number of samples to draw from population",
-                     min = 1,
-                     value = 200)
+      tagList(numericInput(inputId = "clt_draws",
+                           label = "number of samples to draw from population",
+                           min = 1,
+                           value = 200),
+              actionButton(inputId = "sim2",
+                           label = "produce simulation"))
       
     }
     
   })
   
-  bootstrap <- eventReactive(input$sim, {
+  bootstrap <- eventReactive(input$sim1, {
     
     b <- replicate(input$boot_reps,
                    mean(sample(samp(), input$sample_from_sample, replace = TRUE)))
@@ -184,7 +196,7 @@ server <- function(input, output, session) {
     
   })
   
-  central_limit_thereom <- eventReactive(input$sim, {
+  central_limit_thereom <- eventReactive(input$sim2, {
     
     f <- replicate(input$clt_draws,
                    mean(sample(pop()$pop, input$n, replace = TRUE)))
@@ -209,7 +221,7 @@ server <- function(input, output, session) {
         ggtitle("Central Limit Thereom")+
         xlab(bquote(bar(x)))
       
-    }else if (input$switch1 == "Central Limit Thereom" & input$invert == "non - inverted"){
+    }else if (input$switch1 == "Central Limit Thereom" & input$invert == "non-inverted"){
       
       central_limit_thereom() %>% 
         ggplot(aes(x = f))+
@@ -226,13 +238,51 @@ server <- function(input, output, session) {
         geom_histogram(color = "white",
                        fill = "orangered")+
         theme_classic()+
-        ggtitle("Boot Strap Model")+
+        ggtitle("Bootstrap Model")+
         xlab(bquote(bar(x)))
       
     }
     
     
   })
+  
+  
+  output$mew <- renderPrint({
+    
+    if(input$invert == "non-inverted"){
+      
+      cat("µ:", mean(pop()$pop))
+      
+    }else if(input$invert == "invert"){
+      
+      cat("µ:", mean(pop()$inv_pop))
+      
+    }
+    
+  })
+  
+  output$cltmean <- renderPrint({
+    
+    if(input$switch1 == "Central Limit Thereom" & input$invert == "invert"){
+      
+      cat("CLT mean:", mean(central_limit_thereom()$g))
+      
+    } else if (input$switch1 == "Central Limit Thereom" & input$invert == "non-inverted"){
+      
+      cat("CLT mean:", mean(central_limit_thereom()$f))
+    }
+      
+    
+  }) %>% 
+    bindCache(input$sim2)
+  
+  output$bsmean <- renderPrint({
+    
+    cat("Bootstrap mean:", mean(bootstrap()$boots))
+    
+  }) %>% 
+    bindCache(input$sim1)
+  
   
 }
 
