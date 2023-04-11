@@ -1,5 +1,6 @@
 library(shiny)
 library(tidyverse)
+library(grDevices)
 
 
 ui <- fluidPage(
@@ -40,13 +41,13 @@ ui <- fluidPage(
   br(),
   fluidRow(h3("Bootstrap or Central Limit Thereom"),
     column(4,
-           actionButton(inputId = "sim",
-                        label = "produce simulation"),
            selectInput(inputId = "switch1",
                        label = "View bootstrap model or the Central Limit Thereom",
                        choices = c("Bootstrap",
                                    "Central Limit Thereom")),
-           uiOutput(outputId = "options")
+           uiOutput(outputId = "options"),
+           actionButton(inputId = "sim",
+                        label = "produce simulation")
            ),
     column(7,
            plotOutput(outputId = "bs_or_clt"),
@@ -77,7 +78,9 @@ server <- function(input, output, session) {
         ggplot(aes(x = inv_pop))+
         geom_histogram(color = "white",
                        fill = "blue")+
-        theme_classic()
+        theme_classic()+
+        xlab("")+
+        ggtitle("Distribution of the Poputlation")
       
     } else {
       
@@ -85,7 +88,9 @@ server <- function(input, output, session) {
         ggplot(aes(x = pop))+
         geom_histogram(color = "white",
                        fill = "blue")+
-        theme_classic()
+        theme_classic()+
+        xlab("")+
+        ggtitle("Distribution of the Poputlation")
       
     }
     
@@ -125,7 +130,9 @@ server <- function(input, output, session) {
         ggplot(aes(x = e))+
         geom_histogram(color = "white",
                        fill = "green3")+
-        theme_classic()
+        theme_classic()+
+        xlab("")+
+        ggtitle("A Sample")
       
     } else {
       
@@ -133,7 +140,8 @@ server <- function(input, output, session) {
         ggplot(aes(x = d))+
         geom_histogram(color = "white",
                        fill = "green3")+
-        theme_classic()
+        theme_classic()+
+        xlab("")
       
     }
     
@@ -168,7 +176,7 @@ server <- function(input, output, session) {
   bootstrap <- eventReactive(input$sim, {
     
     b <- replicate(input$boot_reps,
-              mean(sample(samp(), input$sample_from_sample, replace = TRUE)))
+                   mean(sample(samp(), input$sample_from_sample, replace = TRUE)))
     
     c <- data.frame(boots = b)
     
@@ -179,7 +187,7 @@ server <- function(input, output, session) {
   central_limit_thereom <- eventReactive(input$sim, {
     
     f <- replicate(input$clt_draws,
-              mean(sample(pop()$pop, input$n, replace = TRUE)))
+                   mean(sample(pop()$pop, input$n, replace = TRUE)))
     g <- replicate(input$clt_draws,
                    mean(sample(pop()$inv_pop, input$n, replace = TRUE)))
     
@@ -197,7 +205,9 @@ server <- function(input, output, session) {
         ggplot(aes(x = g))+
         geom_histogram(color = "white",
                        fill = "purple")+
-        theme_classic()
+        theme_classic()+
+        ggtitle("Central Limit Thereom")+
+        xlab(bquote(bar(x)))
       
     }else if (input$switch1 == "Central Limit Thereom" & input$invert == "non - inverted"){
       
@@ -205,7 +215,9 @@ server <- function(input, output, session) {
         ggplot(aes(x = f))+
         geom_histogram(color = "white",
                        fill = "purple")+
-        theme_classic()
+        theme_classic()+
+        ggtitle("Central Limit Thereom")+
+        xlab(bquote(bar(x)))
       
     } else if(input$switch1 == "Bootstrap") {
       
@@ -213,7 +225,9 @@ server <- function(input, output, session) {
         ggplot(aes(x = boots))+
         geom_histogram(color = "white",
                        fill = "orangered")+
-        theme_classic()
+        theme_classic()+
+        ggtitle("Boot Strap Model")+
+        xlab(bquote(bar(x)))
       
     }
     
