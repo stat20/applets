@@ -14,7 +14,9 @@ ui <- fluidPage(
                    label = "what is the probability of success?",
                    min = 0,
                    value = .5,
-                   max = 1)
+                   max = 1),
+      actionButton(inputId = "go",
+                   label = "Compute")
     ),
     mainPanel(
       plotOutput("plot")
@@ -27,7 +29,7 @@ ui <- fluidPage(
 
 server <- function(input, output) {
 
-  exp <- reactive({
+  exp <- eventReactive(input$go, {
     
     trials <- sample(c(0,1),
                      input$obs,
@@ -54,9 +56,12 @@ server <- function(input, output) {
                   slope = 0,
                   color = "red")+
       scale_y_continuous(limits = c(0,1))+
-      theme_classic()
+      theme_classic()+
+      ylab("cumulative mean of the probabilities")+
+      xlab("trials completed")
     
-  })
+  }) %>% 
+    bindEvent(input$go)
    
 }
 
