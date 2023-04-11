@@ -71,27 +71,32 @@ server <- function(input, output, session) {
     if(input$stat == "median"){
       data() %>% 
         ggplot(aes(x = median))+
-        geom_bar()+
+        geom_histogram(color = "white",
+                       fill = "purple")+
         theme_classic()
     } else if (input$stat == "sum"){
       data() %>% 
         ggplot(aes(x =sum))+
-        geom_bar()+
+        geom_histogram(color = "white",
+                       fill = "purple")+
         theme_classic()
     } else if (input$stat == "max") {
       data() %>% 
         ggplot(aes(x = max))+
-        geom_bar()+
+        geom_histogram(color = "white",
+                       fill = "purple")+
         theme_classic()
     } else if (input$stat == "min"){
       data() %>% 
         ggplot(aes(x = min))+
-        geom_bar()+
+        geom_histogram(color = "white",
+                       fill = "purple")+
         theme_classic()
     } else {
       data() %>% 
         ggplot(aes(x = mean))+
-        geom_bar()+
+        geom_histogram(color = "white",
+                       fill = "purple")+
         theme_classic()
     }
       

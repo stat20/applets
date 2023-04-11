@@ -5,9 +5,9 @@ account: mattmurnane
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8799124
-bundleId: 7073476
+bundleId: 7077219
 url: https://mattmurnane.shinyapps.io/comparing_bootstrap_and_clt/
-when: 1681182321.41587
-lastSyncTime: 1681182321.41589
+when: 1681247783.74569
+lastSyncTime: 1681247783.7457
 asMultiple: FALSE
 asStatic: FALSE
