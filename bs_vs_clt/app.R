@@ -5,11 +5,12 @@ library(tidyverse)
 ui <- fluidPage(
   br(),
   fluidRow(
+    h3("Population"),
     column(4,
       numericInput(inputId = "N",
                    label = "total pop",
                    min = 1,
-                   value = 100),
+                   value = 10000),
       numericInput(inputId = "skew",
                    label = "skew your population",
                    min = 1,
@@ -23,43 +24,35 @@ ui <- fluidPage(
         plotOutput(outputId = "pop_plot")
       )
       ),
-    fluidRow(
+  br(),
+    fluidRow(h3("Empiracal Data"),
       column(4,
              numericInput(inputId = "n",
                           label = "sample size",
                           min = 30,
-                          value = 20),
+                          value = 100),
              actionButton(inputId = "make_sample",
                           label = "see a sample")),
       column(7,
              plotOutput(outputId = "empir_data")
              )
              ),
-  fluidRow(
+  br(),
+  fluidRow(h3("Bootstrap or Central Limit Thereom"),
     column(4,
-           numericInput(inputId = "sample_from_sample",
-                        label = "how big of a sample do you want to draw from your sample",
-                        min = 1,
-                        value = 1),
-           numericInput(inputId = "boot_reps",
-                        label = "How many bootstrap reps would you like",
-                        min = 1,
-                        value = 20),
-           numericInput(inputId = "clt_draws",
-                        label = "number of samples to draw from population",
-                        min = 1,
-                        value = 20),
-           radioButtons(inputId = "switch",
-                        label = "What graph would you like to see?",
-                        choices = c("Bootstrap",
-                                    "CLT"))
+           actionButton(inputId = "sim",
+                        label = "produce simulation"),
+           selectInput(inputId = "switch1",
+                       label = "View bootstrap model or the Central Limit Thereom",
+                       choices = c("Bootstrap",
+                                   "Central Limit Thereom")),
+           uiOutput(outputId = "options")
            ),
     column(7,
            plotOutput(outputId = "bs_or_clt"),
-          plotOutput(outputId = "bs"),
-          plotOutput(outputId = "clt"))
            )
   )
+)
 
 
 server <- function(input, output, session) {
@@ -146,7 +139,33 @@ server <- function(input, output, session) {
     
   })
   
-  bootstrap <- reactive({
+  output$options <- renderUI({
+      
+    
+    if(input$switch1 == "Bootstrap"){
+      
+      tagList(
+        numericInput(inputId = "sample_from_sample",
+                     label = "how big of a sample do you want to draw from your sample",
+                     min = 1,
+                     value = 50),
+        numericInput(inputId = "boot_reps",
+                     label = "How many bootstrap reps would you like",
+                     min = 1,
+                     value = 100))
+      
+    }else if(input$switch1 == "Central Limit Thereom"){
+      
+        numericInput(inputId = "clt_draws",
+                     label = "number of samples to draw from population",
+                     min = 1,
+                     value = 200)
+      
+    }
+    
+  })
+  
+  bootstrap <- eventReactive(input$sim, {
     
     b <- replicate(input$boot_reps,
               mean(sample(samp(), input$sample_from_sample, replace = TRUE)))
@@ -157,7 +176,7 @@ server <- function(input, output, session) {
     
   })
   
-  central_limit_thereom <- reactive({
+  central_limit_thereom <- eventReactive(input$sim, {
     
     f <- replicate(input$clt_draws,
               mean(sample(pop()$pop, input$n, replace = TRUE)))
@@ -167,16 +186,28 @@ server <- function(input, output, session) {
     cltdf <- data.frame(f = f,
                         g = g)
     
-    clt
+    cltdf
   })
   
   output$bs_or_clt <- renderPlot({
     
-    if(input$switch == "CLT"){
+    if(input$switch1 == "Central Limit Thereom" & input$invert == "invert"){
       
-      hist(central_limit_thereom())
+      central_limit_thereom() %>% 
+        ggplot(aes(x = g))+
+        geom_histogram(color = "white",
+                       fill = "purple")+
+        theme_classic()
       
-    } else {
+    }else if (input$switch1 == "Central Limit Thereom" & input$invert == "non - inverted"){
+      
+      central_limit_thereom() %>% 
+        ggplot(aes(x = f))+
+        geom_histogram(color = "white",
+                       fill = "purple")+
+        theme_classic()
+      
+    } else if(input$switch1 == "Bootstrap") {
       
       bootstrap() %>% 
         ggplot(aes(x = boots))+
