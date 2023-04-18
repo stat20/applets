@@ -70,6 +70,9 @@ ui <- fluidPage(
                                label = "How many boot-strap repititions would you like",
                                min = 1,
                                value = 100),
+                  numericInput(inputId = "bs_n",
+                               label = "size of bootstrap samples",
+                               value = 30),
                   actionButton(inputId = "sim_bs",
                                label = "Simulate the Bootstrap")),
            column(7,
@@ -249,10 +252,10 @@ server <- function(input, output, session) {
   bootstrap <- reactive({
     
     bs <- replicate(input$bs_samps,
-                    mean(sample(samp(), input$n, replace = TRUE)))
+                    mean(sample(samp(), input$bs_n, replace = TRUE)))
     
-    l <- seq(from = 0,
-             to = 2,
+    l <- seq(from = mean(samp()) - 3*(sd(samp())/sqrt(input$n)),
+             to = mean(samp()) + 3*(sd(samp())/sqrt(input$n)),
              length = 100)
     
     m <- dnorm(l,
@@ -277,18 +280,21 @@ server <- function(input, output, session) {
       
       bootstrap() %>% 
         ggplot()+
-        geom_histogram(aes(x = bs),
+        geom_histogram(aes(x = bs,
+                           y = ..density..),
                        color = "white",
                        fill = "orangered")+
         geom_line(aes(x = l,
-                      y = m))+
+                      y = m),
+                  size = 2)+
         theme_classic()
       
     } else{
       
       bootstrap() %>% 
         ggplot()+
-        geom_histogram(aes(x = bs),
+        geom_histogram(aes(x = bs,
+                           y = ..density..),
                        color = "white",
                        fill = "orangered")+
         theme_classic()
