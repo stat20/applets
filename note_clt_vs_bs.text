@@ -1,0 +1,14 @@
+Bootsrap: slow down bootstrap graphic. 
+animate it slower: replicate("slow down")
+package for showing messages "computing sample mean" "loading graphic"
+
+
+#most important**
+****God mode: the truth-(what I got as CLT right now) redo UI so this comes first
+
+y_god ~ dgamma(x(vector, input$n, input$skew)
+
+fix CLT: x_bar ~ n(x_bar, s/sqr(n))
+
+fork in path: Do statistcis, draw from normal
+              do a bootstrap: make it slow progress

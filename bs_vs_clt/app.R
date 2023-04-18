@@ -5,6 +5,12 @@ library(grDevices)
 
 ui <- fluidPage(
   br(),
+  # ===============================================
+  # Population UI: uses rgamma() to show a graphic of a population.
+  #Feature population skew that is tied to 'shape' argument of rgamma()
+  #Features population amount N
+  #gives the ability to toggle left skew or rights skew
+  # ===============================================
   fluidRow(
     h3("Population"),
     column(4,
@@ -12,20 +18,25 @@ ui <- fluidPage(
                    label = "total pop",
                    min = 1,
                    value = 10000),
-      numericInput(inputId = "skew",
-                   label = "skew your population",
+      numericInput(inputId = "normalize",
+                   label = "normalize your population",
                    min = 1,
                    value = 1),
-      radioButtons(inputId = "invert",
+      #toggle left-skew right-skew
+      radioButtons(inputId = "skew",
                    label = "Invert the population (this only changes the distribution, allowing population to be more easily left skewd)",
-                   choices = c("non-inverted",
-                               "invert"))
+                   choices = c("right-skew",
+                               "left-skew"))
       ),
       column(7,
         plotOutput(outputId = "pop_plot")
       )
       ),
   br(),
+  # ===============================================
+  # Empirical data UI.
+  # User chooses sample size and is given a button to make the sample
+  # ===============================================
     fluidRow(h3("Empiracal Data"),
       column(4,
              numericInput(inputId = "n",
@@ -39,37 +50,63 @@ ui <- fluidPage(
              )
              ),
   br(),
-  fluidRow(h3("Bootstrap or Central Limit Thereom"),
-    column(4,
-           selectInput(inputId = "switch1",
-                       label = "View bootstrap model or the Central Limit Thereom",
-                       choices = c("Bootstrap",
-                                   "Central Limit Thereom")),
-           uiOutput(outputId = "options"),
-           ),
-    column(7,
-           plotOutput(outputId = "bs_or_clt"),
-           )
+  # ===============================================
+  # "god-mode" working name... this is to show a student what it would look like to
+  # have infinite resources to take as many sample of size "n" (chosen in Empirical data)
+  # ===============================================
+  fluidRow(h3("God-mode"),
+           column(4,
+                  actionButton(inputId = "god",
+                               label = "Simulate ideal expirement")),
+           column(7,
+                  plotOutput(outputId = "godmode"),)),
+  br(),
+  # ===============================================
+  # !!!!This will be reworked to show the bootsrap model and a CLT x~N(x_bar, s/sgr(n)) overlayed
+  # ===============================================
+  fluidRow(h3("Bootstrap simulation"),
+           column(4,
+                  numericInput(inputId = "bs_samps",
+                               label = "How many boot-strap repititions would you like",
+                               min = 1,
+                               value = 100),
+                  actionButton(inputId = "sim_bs",
+                               label = "Simulate the Bootstrap")),
+           column(7,
+                  checkboxInput(inputId = "clt_plot",
+                                label = "Plot CLT over your bootstrap",
+                                value = FALSE),
+                  plotOutput(outputId = "bs_plot"))
   ),
   br(),
+  # ===============================================
+  #still not sure what this should be....
+  # ===============================================
   fluidRow(h3("Statistics"),
-           column(4,
-                  verbatimTextOutput(outputId = "mew")),
-           column(4,
-                  verbatimTextOutput(outputId = "bsmean")),
-           column(4,
-                  verbatimTextOutput(outputId = "cltmean"))
+           
   ))
 
 
+# ===============================================
+#                    SEVER
+# ===============================================
+
 server <- function(input, output, session) {
   
+  # ===============================================
+  # population reactive
+  # creates a gamma population using rgamma(), arguments are inputs from ui
+  # rate is kept at 1
+  # left & right skew are made by making the rgamma() object negative
+  # a population plot is then spat out with output$pop_plot
+  # this renderplot object uses a if else statement to account for a right or left skew
+  # ===============================================
   pop <- reactive({
     
-    a <- rgamma(input$N, shape = input$skew, rate = 1)
+    a <- rgamma(input$N, shape = input$normalize, rate = 1)
     
-    df <- data.frame(pop = a,
-                     inv_pop = -a)
+    df <- data.frame(right = a,
+                     left = -a)
     
     df
     
@@ -78,10 +115,10 @@ server <- function(input, output, session) {
   output$pop_plot <- renderPlot({
     
     
-    if(input$invert == "invert"){
+    if(input$skew == "left-skew"){
       
       pop() %>% 
-        ggplot(aes(x = inv_pop))+
+        ggplot(aes(x = left))+
         geom_histogram(color = "white",
                        fill = "blue")+
         theme_classic()+
@@ -91,7 +128,7 @@ server <- function(input, output, session) {
     } else {
       
       pop() %>% 
-        ggplot(aes(x = pop))+
+        ggplot(aes(x = right))+
         geom_histogram(color = "white",
                        fill = "blue")+
         theme_classic()+
@@ -102,35 +139,44 @@ server <- function(input, output, session) {
     
   })
   
-  samp <- eventReactive(input$make_sample, {
+  # ===============================================
+  # Empiracla part of the serveer
+  # samp() pulls a sample from either the right or left skewed pop
+  # sampdf() makes a data frame for sample from both left and right skew
+  # the render plot object plots the sample from sampdf for either left or right skewed pop
+  # ===============================================
+  
+  samp <- reactive({
     
-    if(input$invert == "invert"){
+    if(input$skew == "left-skew"){
       
-      sample(pop()$inv_pop, input$n, replace = TRUE)
+      sample(pop()$left, input$n, replace = TRUE)
       
-    } else {
+    } else if(input$skew == "right-skew") {
       
-      sample(pop()$pop, input$n, replace = TRUE)
+      sample(pop()$right, input$n, replace = TRUE)
       
     }
     
-  })
+  }) %>% 
+    bindEvent(input$make_sample)
   
-  sampdf <- eventReactive(input$make_sample, {
+  sampdf <- reactive({
     
-    d <- sample(pop()$pop, input$n, replace = TRUE)
-    e <- sample(pop()$inv_pop, input$n, replace = TRUE)
+    d <- sample(pop()$right, input$n, replace = TRUE)
+    e <- sample(pop()$left, input$n, replace = TRUE)
     
     df2 <- data.frame(d = d,
                e = e)
     
     df2
     
-  })
+  }) %>% 
+    bindEvent(input$make_sample)
   
   output$empir_data <- renderPlot({
     
-    if(input$invert == "invert"){
+    if(input$skew == "left-skew"){
       
       sampdf() %>% 
         ggplot(aes(x = e))+
@@ -155,137 +201,103 @@ server <- function(input, output, session) {
   }) %>% 
     bindEvent(input$make_sample)
   
-  output$options <- renderUI({
-      
+  # ===============================================
+  # goddf() creates a df of ten thousand sample means from population
+  # render plot objects then plots it
+  # ===============================================
+  
+  goddf <- reactive({
     
-    if(input$switch1 == "Bootstrap"){
+    s <- replicate(10000, mean(sample(pop()$right, input$n, replace = TRUE)))
+    
+    t <- replicate(10000, mean(sample(pop()$left, input$n, replace = TRUE)))
+    
+    zdf <- data.frame(s = s,
+                      t = t)
+    zdf
+    
+  }) %>% 
+    bindEvent(input$god)
+  
+  
+  output$godmode <- renderPlot(
+    
+    if(input$skew == "left-skew"){
       
-      tagList(
-        numericInput(inputId = "sample_from_sample",
-                     label = "how big of a sample do you want to draw from your sample",
-                     min = 1,
-                     value = 50),
-        numericInput(inputId = "boot_reps",
-                     label = "How many bootstrap reps would you like",
-                     min = 1,
-                     value = 100),
-      actionButton(inputId = "sim1",
-                   label = "produce simulation"))
+      goddf() %>% 
+        ggplot(aes(x = t))+
+        geom_histogram(color = "white",
+                       fill = "purple")+
+        theme_classic()
       
-    }else if(input$switch1 == "Central Limit Thereom"){
+    } else if(input$skew == "right-skew") {
       
-      tagList(numericInput(inputId = "clt_draws",
-                           label = "number of samples to draw from population",
-                           min = 1,
-                           value = 200),
-              actionButton(inputId = "sim2",
-                           label = "produce simulation"))
+      goddf() %>% 
+        ggplot(aes(x = s))+
+        geom_histogram(color = "white",
+                       fill = "purple")+
+        theme_classic()
       
     }
-    
-  })
+  ) %>% 
+    bindEvent(input$god)
   
-  bootstrap <- eventReactive(input$sim1, {
-    
-    b <- replicate(input$boot_reps,
-                   mean(sample(samp(), input$sample_from_sample, replace = TRUE)))
-    
-    c <- data.frame(boots = b)
-    
-    c
-    
-  })
+  # ===============================================
+  # bootstrap model & CLT overlay
+  # ===============================================
   
-  central_limit_thereom <- eventReactive(input$sim2, {
+  bootstrap <- reactive({
     
-    f <- replicate(input$clt_draws,
-                   mean(sample(pop()$pop, input$n, replace = TRUE)))
-    g <- replicate(input$clt_draws,
-                   mean(sample(pop()$inv_pop, input$n, replace = TRUE)))
+    bs <- replicate(input$bs_samps,
+                    mean(sample(samp(), input$n, replace = TRUE)))
     
-    cltdf <- data.frame(f = f,
-                        g = g)
+    l <- seq(from = 0,
+             to = 2,
+             length = 100)
     
-    cltdf
-  })
+    m <- dnorm(l,
+               mean = mean(samp()),
+               sd = sd(samp())/sqrt(input$n))
+    
+    bsdf <- data.frame(bs = bs,
+                       m = m,
+                       l = l)
+    
+    bsdf
+    
+  }) %>% 
+    bindEvent(input$sim_bs)
   
-  output$bs_or_clt <- renderPlot({
+  
+  
+  
+  output$bs_plot <- renderPlot({
     
-    if(input$switch1 == "Central Limit Thereom" & input$invert == "invert"){
-      
-      central_limit_thereom() %>% 
-        ggplot(aes(x = g))+
-        geom_histogram(color = "white",
-                       fill = "purple")+
-        theme_classic()+
-        ggtitle("Central Limit Thereom")+
-        xlab(bquote(bar(x)))
-      
-    }else if (input$switch1 == "Central Limit Thereom" & input$invert == "non-inverted"){
-      
-      central_limit_thereom() %>% 
-        ggplot(aes(x = f))+
-        geom_histogram(color = "white",
-                       fill = "purple")+
-        theme_classic()+
-        ggtitle("Central Limit Thereom")+
-        xlab(bquote(bar(x)))
-      
-    } else if(input$switch1 == "Bootstrap") {
+    if(input$clt_plot == "TRUE"){
       
       bootstrap() %>% 
-        ggplot(aes(x = boots))+
-        geom_histogram(color = "white",
+        ggplot()+
+        geom_histogram(aes(x = bs),
+                       color = "white",
                        fill = "orangered")+
-        theme_classic()+
-        ggtitle("Bootstrap Model")+
-        xlab(bquote(bar(x)))
+        geom_line(aes(x = l,
+                      y = m))+
+        theme_classic()
       
-    }
-    
-    
-  })
-  
-  
-  output$mew <- renderPrint({
-    
-    if(input$invert == "non-inverted"){
+    } else{
       
-      cat("µ:", mean(pop()$pop))
-      
-    }else if(input$invert == "invert"){
-      
-      cat("µ:", mean(pop()$inv_pop))
+      bootstrap() %>% 
+        ggplot()+
+        geom_histogram(aes(x = bs),
+                       color = "white",
+                       fill = "orangered")+
+        theme_classic()
       
     }
     
   })
-  
-  output$cltmean <- renderPrint({
-    
-    if(input$switch1 == "Central Limit Thereom" & input$invert == "invert"){
-      
-      cat("CLT mean:", mean(central_limit_thereom()$g))
-      
-    } else if (input$switch1 == "Central Limit Thereom" & input$invert == "non-inverted"){
-      
-      cat("CLT mean:", mean(central_limit_thereom()$f))
-    }
-      
-    
-  }) %>% 
-    bindCache(input$sim2)
-  
-  output$bsmean <- renderPrint({
-    
-    cat("Bootstrap mean:", mean(bootstrap()$boots))
-    
-  }) %>% 
-    bindCache(input$sim1)
-  
-  
+
+
 }
-
-
 
 shinyApp(ui = ui, server = server)
