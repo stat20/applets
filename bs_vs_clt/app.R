@@ -359,37 +359,25 @@ server <- function(input, output, session) {
     
     plot <- ggplot()
     
-    if(input$comp_choice == "Ideal World"){
+    if ("Ideal World" == input$comp_choice){
       
-      plot <- plot +
-        geom_histogram(data = goddf(),
-                       mapping = aes(x = s,
-                                     y = ..density..),
-                       color = "white",
-                       fill = "purple")
+      plot <- plot + geom_histogram(data = goddf(),
+                             mapping = aes(x = s,
+                                           y = ..density..),
+                             color = "white",
+                             fill = "purple") 
       
-    } if (input$comp_choice %in% c("Ideal World","Bootstrap")){
+    } else if("Bootstrap" == input$comp_choice){
       
-      plot <- plot +
-        geom_histogram(data = goddf(),
-                       mapping = aes(x = s,
-                                     y = ..density..),
-                       color = "white",
-                       fill = "purple")+
-        geom_histogram(data = dataframe(),
-                       mapping = aes(x = bs,
-                                     y = ..density..),
-                       color = "white",
-                       fill = "orangered")
-      
-    }else{
-      
+      plot <- plot + geom_histogram(data = dataframe(),
+                                   mapping = aes(x = bs,
+                                                 y = ..density..),
+                                   color = "white",
+                                   fill = "orangered")
       
     }
     
-    
-    
-    plot + theme_classic()
+    plot
     
   })
   
