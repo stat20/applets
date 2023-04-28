@@ -108,8 +108,16 @@ ui <- fluidPage(
                                      label = "Choose your overlay",
                                      choices = c("Ideal World",
                                                  "Bootstrap",
-                                                 "Central Limit Theorem")
-                                     )
+                                                 "Central Limit Theorem"),
+                                     selected = c("Ideal World",
+                                                  "Bootstrap",
+                                                  "Central Limit Theorem")
+                                     ),
+                  sliderInput(inputId = "alpha_bs",
+                              label = "Change opacity for Bootstrap graph",
+                              min = 0,
+                              max = 1,
+                              value = 1)
                   ),
            column(7,
                   plotOutput("comp_graph")
@@ -359,25 +367,104 @@ server <- function(input, output, session) {
     
     plot <- ggplot()
     
-    if ("Ideal World" == input$comp_choice){
+    ideal <- "Ideal World" %in% input$comp_choice
+    bs <- "Bootstrap" %in% input$comp_choice
+    clt <- "Central Limit Theorem" %in% input$comp_choice
+    
+    if (ideal & bs & clt){
+      
+      plot <- plot + 
+        geom_histogram(data = goddf(),
+                             mapping = aes(x = s,
+                                           y = ..density..),
+                             color = "white",
+                             fill = "purple")+
+        geom_histogram(data = dataframe(),
+                       mapping = aes(x = bs,
+                                     y = ..density..),
+                       color = "white",
+                       fill = "orangered",
+                       alpha = input$alpha_bs)+
+        geom_line(data = dataframe(),
+                  mapping = aes(x = l,
+                                y = m),
+                  size = 1,
+                  color = "black")
+      
+    } else if(ideal & bs){
       
       plot <- plot + geom_histogram(data = goddf(),
                              mapping = aes(x = s,
                                            y = ..density..),
                              color = "white",
-                             fill = "purple") 
+                             fill = "purple")+
+        geom_histogram(data = dataframe(),
+                       mapping = aes(x = bs,
+                                     y = ..density..),
+                       color = "white",
+                       fill = "orangered",
+                       alpha = input$alpha_bs)
       
-    } else if("Bootstrap" == input$comp_choice){
+    } else if(ideal & clt){
       
-      plot <- plot + geom_histogram(data = dataframe(),
-                                   mapping = aes(x = bs,
-                                                 y = ..density..),
-                                   color = "white",
-                                   fill = "orangered")
+      plot <- plot + 
+        geom_histogram(data = goddf(),
+                       mapping = aes(x = s,
+                                     y = ..density..),
+                       color = "white",
+                       fill = "purple")+
+        geom_line(data = dataframe(),
+                  mapping = aes(x = l,
+                                y = m),
+                  size = 1,
+                  color = "black")
+      
+    }else if(ideal){
+      
+      plot <- plot +
+        geom_histogram(data = goddf(),
+                       mapping = aes(x = s,
+                                     y = ..density..),
+                       color = "white",
+                       fill = "purple")
+      
+    }else if(bs){
+      
+      plot <- plot +
+        geom_histogram(data = dataframe(),
+                       mapping = aes(x = bs,
+                                     y = ..density..),
+                       color = "white",
+                       fill = "orangered",
+                       alpha = input$alpha_bs)
+      
+    }else if(clt){
+      
+      plot <- plot +
+        geom_line(data = dataframe(),
+                  mapping = aes(x = l,
+                                y = m),
+                  size = 1,
+                  color = "black")
+      
+    }else if(bs & clt){
+      
+      plot <- plot +
+        geom_histogram(data = dataframe(),
+                       mapping = aes(x = bs,
+                                     y = ..density..),
+                       color = "white",
+                       fill = "orangered",
+                       alpha = input$alpha_bs)+
+        geom_line(data = dataframe(),
+                  mapping = aes(x = l,
+                                y = m),
+                  size = 1,
+                  color = "black")
       
     }
     
-    plot
+    plot + theme_classic()
     
   })
   
