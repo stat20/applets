@@ -12,3 +12,23 @@ fix CLT: x_bar ~ n(x_bar, s/sqr(n))
 
 fork in path: Do statistcis, draw from normal
               do a bootstrap: make it slow progress
+              
+              
+              
+              ggplot()+
+      geom_histogram(data = goddf(),
+                     mapping = aes(x = s,
+                                   y = ..density..),
+                     color = "white",
+                     fill = "purple")+
+      geom_histogram(data = dataframe(),
+                     mapping = aes(x = bs,
+                                   y = ..density..),
+                     color = "white",
+                     fill = "orangered")+
+      geom_line(data = dataframe(),
+                mapping = aes(x = l,
+                              y = m),
+                size = 1,
+                color = "black")+
+      theme_classic()
