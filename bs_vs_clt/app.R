@@ -10,11 +10,13 @@ ui <- fluidPage(
   
   # ===============================================
   # Latex help
+  # section below allows in-line LaTeX via $ in mathjax. Replace less-than-sign with < 
+  # and grater-than-sign with >
+  # unfortunately I can't figure out how to use () just as a parenthesis so I have to opt
+  # for [] 
   # ===============================================
   
   withMathJax(),
-  # section below allows in-line LaTeX via $ in mathjax. Replace less-than-sign with < 
-  # and grater-than-sign with >
   tags$script("
               MathJax.Hub.Config({
               tex2jax: {
