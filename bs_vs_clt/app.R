@@ -1,14 +1,28 @@
 library(shiny)
 library(tidyverse)
-library(grDevices)
-library(gganimate)
+library(htmltools)
 
 # ===============================================
 #                    UI
 # ===============================================
 
 ui <- fluidPage(
-  br(),
+  
+  # ===============================================
+  # Latex help
+  # ===============================================
+  
+  withMathJax(),
+  # section below allows in-line LaTeX via $ in mathjax. Replace less-than-sign with < 
+  # and grater-than-sign with >
+  tags$script("
+              MathJax.Hub.Config({
+              tex2jax: {
+              inlineMath: [['$','$'], ['\\(','\\)']],
+              processEscapes: true
+              }
+              });"
+  ),
   # ===============================================
   # Population UI: uses rgamma() to show a graphic of a population.
   #Feature population skew that is tied to 'shape' argument of rgamma()
@@ -37,6 +51,8 @@ ui <- fluidPage(
       )
       ),
   br(),
+  tags$hr(style = "border-top: 1px solid #000000;"),
+  br(),
   # ===============================================
   # "god-mode" working name... this is to show a student what it would look like to
   # have infinite resources to take as many sample of size "n" (chosen in Empirical data)
@@ -51,6 +67,8 @@ ui <- fluidPage(
            column(7,
                   plotOutput(outputId = "godmode"),)),
   br(),
+  tags$hr(style = "border-top: 1px solid #000000;"),
+  br(),
   # ===============================================
   # Empirical data UI.
   # User chooses sample size and is given a button to make the sample
@@ -64,17 +82,26 @@ ui <- fluidPage(
              actionButton(inputId = "make_sample",
                           label = "see a sample"),
              br(),
-             actionButton(inputId = "fast",
-                          label = "Fastrak"),
-             br(),
-             h5("Fastrak pulls a new sample from the population, 
-                computes the bootstrap and CLT for you.
-                After clicking the Fastrak button just scroll down to 'Let's Compare'. ")
              ),
       column(7,
              plotOutput(outputId = "empir_data")
              )
              ),
+  br(),
+  fluidRow(
+    column(2,
+           actionButton(inputId = "fast",
+                        label = "Fastrak",
+                        icon = icon(name = "forward")),
+           br()),
+    column(6,
+           h5("Fastrak pulls a new sample from the population, 
+                computes the bootstrap and CLT for you.
+                After clicking the Fastrak button just scroll down to 'Let's Compare'. ")
+           )
+    ),
+  br(),
+  tags$hr(style = "border-top: 1px solid #000000;"),
   br(),
   # ===============================================
   # tab panels that show different ways to visualize, use your sample
@@ -102,17 +129,26 @@ ui <- fluidPage(
                        actionButton(inputId = "sim_clt",
                                     label = "Compute the Central Limit Theorem"),
                        br(),
-                       p("The CLT follows a normal distribtion:" ,uiOutput(outputId = "clt_norm")),
+                       p("The CLT follows a normal distribution:" ,uiOutput(outputId = "clt_norm")),
                        plotOutput("CLT"),
                        br(),
-                       tags$div("For some information on the Central Limit Thereom click",
-                                tags$a(href = "https://stackoverflow.com/questions/42047422/create-url-hyperlink-in-r-shiny",
-                                       "here"))
+                       actionButton(inputId = "CLT_info",
+                                    label = "",
+                                    icon = icon(name = "info-circle"),
+                                    style = "background-color:#FFFFFF;
+                                        color:#000000;
+                                        border-color:#BEBEBE;
+                                        border-style:none;
+                                        border-width:1px;
+                                        border-radius:100%;
+                                        font-size:25px;")
                        )
               ),
   br(),
+  tags$hr(style = "border-top: 1px solid #000000;"),
+  br(),
   # ===============================================
-  # !!!!This will be reworked to show the bootstrap model and a CLT x~N(x_bar, s/sqrt(n)) over layed
+  # shows the bootstrap model and a CLT x~N(x_bar, s/sqrt(n)) over layed
   # ===============================================
   fluidRow(h3("Lets Compare!"),
            column(4,
@@ -127,6 +163,8 @@ ui <- fluidPage(
                   plotOutput("comp_graph")
                   )
   ),
+  br(),
+  tags$hr(style = "border-top: 1px solid #000000;"),
   br(),
   # ===============================================
   # Confidence Intervals
@@ -188,7 +226,7 @@ server <- function(input, output, session) {
         ggplot(aes(x = left))+
         geom_histogram(color = "white",
                        fill = "blue")+
-        theme_classic()+
+        theme_classic(base_size = 18)+
         xlab("")+
         ggtitle("Distribution of the Population")+
         theme(axis.title.y = element_blank(),
@@ -202,7 +240,7 @@ server <- function(input, output, session) {
         ggplot(aes(x = right))+
         geom_histogram(color = "white",
                        fill = "blue")+
-        theme_classic()+
+        theme_classic(base_size = 18)+
         xlab("")+
         ggtitle("Distribution of the Population")+
         theme(axis.title.y = element_blank(),
@@ -244,12 +282,13 @@ server <- function(input, output, session) {
       ggplot(aes(x = s))+
       geom_histogram(color = "white",
                      fill = "purple")+
-      theme_classic()+
+      theme_classic(base_size = 18)+
       theme(axis.title.y = element_blank(),
             axis.ticks.y = element_blank(),
             axis.text.y = element_blank(),
             axis.line.y = element_blank(),
-            axis.title.x = element_blank())
+            axis.title.x = element_blank())+
+      ggtitle("Sampling Distribution")
     
   ) %>% 
     bindEvent(input$god)
@@ -287,7 +326,7 @@ server <- function(input, output, session) {
       ggplot(aes(x = samp))+
       geom_histogram(color = "white",
                      fill = "green3")+
-      theme_classic()+
+      theme_classic(base_size = 18)+
       xlab("x")+
       ggtitle("A Sample")+
       theme(axis.title.y = element_blank(),
@@ -349,13 +388,14 @@ server <- function(input, output, session) {
                            y = ..density..),
                        color = "white",
                        fill = "orangered")+
-        theme_classic()+
+        theme_classic(base_size = 18)+
         xlab(bquote(bar(x)))+
         ylab("")+
         theme(axis.title.y = element_blank(),
               axis.ticks.y = element_blank(),
               axis.text.y = element_blank(),
-              axis.line.y = element_blank())
+              axis.line.y = element_blank())+
+      ggtitle("Bootstrap Sampling Distribution")
     
   }) %>% 
     bindEvent(input$sim_bs,
@@ -387,7 +427,7 @@ server <- function(input, output, session) {
                     y = m),
                 size = 1,
                 color = "black")+
-      theme_classic()+
+      theme_classic(base_size = 18)+
       ylab("")+
       theme(axis.title.y = element_blank(),
             axis.ticks.y = element_blank(),
@@ -403,7 +443,7 @@ server <- function(input, output, session) {
   output$clt_norm <- renderUI({
     
     withMathJax(
-      sprintf("$$\\mathcal{N}(\\mu = \\bar{X} = %g,\\sigma = \\frac{s}{\\sqrt{n}} = %g)$$",
+      sprintf("$$\\mathcal{N}(\\mu = \\bar{x} = %g,\\sigma = \\frac{s}{\\sqrt{n}} = %g)$$",
               round(mean(samp()$samp), 2),
               round(sd(samp()$samp)/sqrt(input$n), 2))
     )
@@ -412,6 +452,31 @@ server <- function(input, output, session) {
     bindEvent(input$sim_clt,
               input$fast,
               ignoreInit = TRUE)
+  
+  observeEvent(input$CLT_info, {
+    
+    showModal(modalDialog(
+      title = "The Central Limit Theorem",
+      withMathJax(
+        p("The Central Limit Theorem states that the means of sufficiently large identical and independently distributed ((iid)) random samples, each of size (n), follow a normal curve.
+       Where if $n \\rightarrow \\infty$ then the mean of the sample, $\\bar{x}$, will resemble the mean of the population, $\\mu$. So, with just one sufficiently large sample,
+       we can use the Central Limit Theorem to approximate a sampling distribution:")
+      ),
+      withMathJax(
+        div("$$\\mathcal{N}(\\mu = \\bar{x}, \\frac{\\sigma}{\\sqrt{n}} = \\frac{s}{\\sqrt{n}})$$")
+      ),
+      withMathJax(
+        tags$div("As you can see we have replaced $\\mu$ with $\\bar{x}$ and $\\sigma$ with (s).
+                 If you are interested in the derivation of the standard error, $\\frac{\\sigma}{\\sqrt{n}}$,
+                 please click",
+                 tags$a(href = "https://en.wikipedia.org/wiki/Standard_error",
+                        "here"), ".")
+      ),
+      easyClose = TRUE
+    ))
+    
+  })
+  
 
   # ===============================================
   # graph magnum opus
@@ -519,7 +584,7 @@ server <- function(input, output, session) {
     }
     
     plot + 
-      theme_classic()+
+      theme_classic(base_size = 18)+
       theme(axis.title.y = element_blank(),
             axis.ticks.y = element_blank(),
             axis.text.y = element_blank(),
@@ -542,11 +607,11 @@ server <- function(input, output, session) {
       withMathJax(
         div("$$(\\mu - 1.96\\frac{\\sigma}{\\sqrt{n}}, \\mu + 1.96\\frac{\\sigma}{\\sqrt{n}})$$")
       ),
-      div("Since the Sampling Distribution follows a Normal Curve (thanks to the Cenral Limit Theorem)
+      div("Since the Sampling Distribution follows a Normal Curve [Cenral Limit Theorem],
           we can use what we know of the Normal Curve to give us an interval estimate of the population parameter.
           We know from the Empircal Rule that 95% of the area underneath the Normal Curve is within 1.96 standard deviations
-          of the mean and the sample mean will resemble the population mean (same is said of the standard deviation).
-          To get our interval, we follow the formula above and replace mew with the sample mean and sigma with the sample standard deviation"),
+          of the mean and the sample mean will resemble the population mean [same is said of the standard deviation].
+          To get our interval, we follow the formula above and replace $\\mu$ with the sample mean, $\\bar{x}$ and $\\sigma$ with the sample standard deviation, $s$."),
       easyClose = TRUE
     ))
     
@@ -558,8 +623,8 @@ server <- function(input, output, session) {
       
       withMathJax(
         sprintf("$$\\mu = %g \\hspace{1cm} \\sigma = %g$$",
-                round(mean(pop()$right), 2),
-                round(sd(pop()$right), 2))
+                round(mean(pop()$left), 2),
+                round(sd(pop()$left), 2))
       )
       
     }else if(input$skew == "right-skew"){
