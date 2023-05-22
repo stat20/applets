@@ -1,203 +1,175 @@
 library(shiny)
 library(tidyverse)
-library(htmltools)
+library(shinydashboard)
 
 # ===============================================
 #                    UI
 # ===============================================
 
-ui <- fluidPage(
+ui <- dashboardPage(
+  dashboardHeader(title = "Bootstrap & CLT"),
   
-  # ===============================================
-  # Latex help
-  # section below allows in-line LaTeX via $ in mathjax. Replace less-than-sign with < 
-  # and grater-than-sign with >
-  # unfortunately I can't figure out how to use () just as a parenthesis so I have to opt
-  # for [] 
-  # ===============================================
-  
-  withMathJax(),
-  tags$script("
+  dashboardSidebar(
+    sidebarMenu(
+      style = "position:fixed;width:220px;",
+      
+      # ===============================================
+      # Population UI: uses rgamma() to show a graphic of a population.
+      #Feature population skew that is tied to 'shape' argument of rgamma()
+      #Features population amount N
+      #gives the ability to toggle left skew or rights skew
+      # ===============================================
+      
+      menuItem("Population",
+               numericInput(inputId = "N",
+                            label = "total pop",
+                            min = 1,
+                            value = 10000),
+               sliderInput(inputId = "normalize",
+                           label = "Change the skew of your population",
+                           min = 0,
+                           value =1,
+                           max = 1),
+               radioButtons(inputId = "skew",
+                            label = "How would you like your skew?",
+                            choices = c("right-skew",
+                                        "left-skew"))
+      ),
+      
+      # ===============================================
+      # Empirical data Inputs
+      # User chooses sample size and is given a button to make the sample
+      # ===============================================
+      
+      menuItem("Empirical Data",
+               numericInput(inputId = "n",
+                            label = "sample size",
+                            min = 30,
+                            value = 100)
+      ),
+      # ===============================================
+      # Bootstrap Model Inputs
+      # ===============================================
+      
+      menuItem("Bootstrap",
+               numericInput(inputId = "bs_samps",
+                            label = "How many boot-strap repititions would you like",
+                            min = 1,
+                            value = 500)
+      ),
+      
+      # ===============================================
+      # shows the bootstrap model and a CLT x~N(x_bar, s/sqrt(n)) over layed
+      # ===============================================
+      
+      menuItem("Let's Compare!",
+               checkboxGroupInput(inputId = "comp_choice",
+                                  label = "Choose your overlay",
+                                  choices = c("Ideal World",
+                                              "Bootstrap",
+                                              "Central Limit Theorem"))
+      ),
+      # ===============================================
+      # Fastrak Buttons for pulling a quick BS and CLT and
+      # Pulling 100 CIs
+      # ===============================================
+      menuItem("Fastrak",
+               actionButton(inputId = "fastrak_info",
+                            label = "",
+                            icon = icon(name = "info-circle"),
+                            style = "background-color:#FFFFFF;
+                                        color:#000000;
+                                        border-color:#BEBEBE;
+                                        border-style:none;
+                                        border-width:1px;
+                                        border-radius:100%;
+                                        font-size:25px;"),
+               actionButton(inputId = "fast",
+                            label = "Fastrak",
+                            icon = icon(name = "forward")))
+    )
+  ),
+  dashboardBody(
+    fluidRow(
+      box(title = "Distribution of the Population", collapsible = TRUE,
+          plotOutput(outputId = "pop_plot")),
+      box(title = "In a World", collapsible = TRUE,
+          h5("If you had unlimited resources, funding, time, etc.
+              you would be able to draw as many samples as you would like from this population.
+              Here is ten thousand sample means."),
+          plotOutput(outputId = "godmode"),
+          actionButton(inputId = "god",
+                       label = "Simulate ideal expirement"))
+    ),
+    fluidRow(
+      
+      # ===============================================
+      # Latex help
+      # section below allows in-line LaTeX via $ in mathjax. Replace less-than-sign with < 
+      # and grater-than-sign with >
+      # unfortunately I can't figure out how to use () just as a parenthesis so I have to opt
+      # for [] 
+      # ===============================================
+      
+      withMathJax(),
+      tags$script("
               MathJax.Hub.Config({
               tex2jax: {
               inlineMath: [['$','$'], ['\\(','\\)']],
               processEscapes: true
               }
               });"
-  ),
-  # ===============================================
-  # Population UI: uses rgamma() to show a graphic of a population.
-  #Feature population skew that is tied to 'shape' argument of rgamma()
-  #Features population amount N
-  #gives the ability to toggle left skew or rights skew
-  # ===============================================
-  fluidRow(
-    h3("Population"),
-    column(4,
-      numericInput(inputId = "N",
-                   label = "total pop",
-                   min = 1,
-                   value = 10000),
-      sliderInput(inputId = "normalize",
-                   label = "Change the skew of your population",
-                   min = 0,
-                   value =1,
-                   max = 1),
-      radioButtons(inputId = "skew",
-                   label = "How would you like your skew?",
-                   choices = c("right-skew",
-                               "left-skew"))
       ),
-      column(7,
-        plotOutput(outputId = "pop_plot")
+      box(title = 'Empirical Data', collapsible = TRUE,
+          plotOutput(outputId = "empir_data"),
+          actionButton(inputId = "make_sample",
+                       label = "see a sample")),
+      tabBox(id = "tabbox1",
+             tabPanel("Bootstrap",
+                      p("Your bootstrap sample size:", textOutput("bs_size", inline = T)),
+                      actionButton(inputId = "sim_bs",
+                                   label = "Compute the Bootstrap"),
+                      plotOutput(outputId = "bs_plot"),
+                      p(uiOutput(outputId = "bs_stats"))),
+             tabPanel("Central Limit Theorem",
+                      actionButton(inputId = "sim_clt",
+                                   label = "Compute the Central Limit Theorem"),
+                      br(),
+                      p("The CLT follows a normal distribution:" , uiOutput(outputId = "clt_norm")),
+                      plotOutput("CLT"),
+                      actionButton(inputId = "CLT_info",
+                                   label = "",
+                                   icon = icon(name = "info-circle"),
+                                   style = "background-color:#FFFFFF;
+                                        color:#000000;
+                                        border-color:#BEBEBE;
+                                        border-style:none;
+                                        border-width:1px;
+                                        border-radius:100%;
+                                        font-size:25px;"))
       )
-      ),
-  br(),
-  tags$hr(style = "border-top: 1px solid #000000;"),
-  br(),
-  # ===============================================
-  # "god-mode" working name... this is to show a student what it would look like to
-  # have infinite resources to take as many sample of size "n" (chosen in Empirical data)
-  # ===============================================
-  fluidRow(h3("In a world"),
-           h5("If you had unlimited resources, funding, time, etc.
-              you would be able to draw as many samples as you would like from this population.
-              Here is ten thousand sample means."),
-           column(4,
-                  actionButton(inputId = "god",
-                               label = "Simulate ideal expirement")),
-           column(7,
-                  plotOutput(outputId = "godmode"),)),
-  br(),
-  tags$hr(style = "border-top: 1px solid #000000;"),
-  br(),
-  # ===============================================
-  # Empirical data UI.
-  # User chooses sample size and is given a button to make the sample
-  # ===============================================
-    fluidRow(h3("Empirical Data"),
-      column(4,
-             numericInput(inputId = "n",
-                          label = "sample size",
-                          min = 30,
-                          value = 100),
-             actionButton(inputId = "make_sample",
-                          label = "see a sample"),
-             br(),
-             ),
-      column(7,
-             plotOutput(outputId = "empir_data")
-             )
-             ),
-  br(),
-  fluidRow(
-    column(2,
-           actionButton(inputId = "fast",
-                        label = "Fastrak",
-                        icon = icon(name = "forward")),
-           br()),
-    column(6,
-           h5("Fastrak pulls a new sample from the population, 
-                computes the bootstrap and CLT for you.
-                After clicking the Fastrak button just scroll down to 'Let's Compare'. ")
-           )
     ),
-  br(),
-  tags$hr(style = "border-top: 1px solid #000000;"),
-  br(),
-  # ===============================================
-  # tab panels that show different ways to visualize, use your sample
-  # ===============================================
-  tabsetPanel(type = "tabs",
-              tabPanel("Bootstrap",
-                       br(),
-                       fluidRow(column(4,
-                                       p("Your bootstrap sample size:", textOutput("bs_size", inline = T)),
-                                       numericInput(inputId = "bs_samps",
-                                                    label = "How many boot-strap repititions would you like",
-                                                    min = 1,
-                                                    value = 500),
-                                       actionButton(inputId = "sim_bs",
-                                                    label = "Compute the Bootstrap")
-                                       ),
-                                column(7,
-                                       plotOutput(outputId = "bs_plot"),
-                                       p(uiOutput(outputId = "bs_stats"))
-                                       ),
-                                ),
-              ),
-              tabPanel("Central Limit Theorem",
-                       br(),
-                       actionButton(inputId = "sim_clt",
-                                    label = "Compute the Central Limit Theorem"),
-                       br(),
-                       p("The CLT follows a normal distribution:" ,uiOutput(outputId = "clt_norm")),
-                       plotOutput("CLT"),
-                       br(),
-                       actionButton(inputId = "CLT_info",
-                                    label = "",
-                                    icon = icon(name = "info-circle"),
-                                    style = "background-color:#FFFFFF;
-                                        color:#000000;
-                                        border-color:#BEBEBE;
-                                        border-style:none;
-                                        border-width:1px;
-                                        border-radius:100%;
-                                        font-size:25px;")
-                       )
-              ),
-  br(),
-  tags$hr(style = "border-top: 1px solid #000000;"),
-  br(),
-  # ===============================================
-  # shows the bootstrap model and a CLT x~N(x_bar, s/sqrt(n)) over layed
-  # ===============================================
-  fluidRow(h3("Lets Compare!"),
-           column(4,
-                  checkboxGroupInput(inputId = "comp_choice",
-                                     label = "Choose your overlay",
-                                     choices = c("Ideal World",
-                                                 "Bootstrap",
-                                                 "Central Limit Theorem"),
-                                     )
-                  ),
-           column(7,
-                  plotOutput("comp_graph")
-                  )
-  ),
-  br(),
-  tags$hr(style = "border-top: 1px solid #000000;"),
-  br(),
-  # ===============================================
-  # Confidence Intervals
-  # ===============================================
-  fluidRow(h3("Confidence Intervals"),
-           column(1,
-                  offset = 10,
-                  actionButton(inputId = "CI_info",
-                               label = "",
-                               icon = icon(name = "info-circle"),
-                               style = "background-color:#FFFFFF;
-                                        color:#000000;
-                                        border-color:#BEBEBE;
-                                        border-style:none;
-                                        border-width:1px;
-                                        border-radius:100%;
-                                        font-size:25px;")
-           ),
-           column(10,
-                  p("Statistics for the population", uiOutput(outputId = "pop_stats")),
-                  p("95% Confidence Interval for the Idea World is", uiOutput(outputId = "CI_ideal")),
-                  p("95% Confidence Interval for the Bootstrap is", uiOutput(outputId = "CI_bs")),
-                  p("95% Confidence Interval for Central Limit Theorem is", uiOutput(outputId = "CI_clt"))
-                  )
-  ))
+    fluidRow(
+      box(title = "Let's Compare", collapsible = TRUE,
+          plotOutput("comp_graph")),
+      tabBox(
+        id = "tabbox2",
+        tabPanel(
+          "graph"
+        ),
+        tabPanel(
+          "Confidence Intervals",
+          p("Statistics for the population", uiOutput(outputId = "pop_stats")),
+          p("95% Confidence Interval for the Idea World is", uiOutput(outputId = "CI_ideal")),
+          p("95% Confidence Interval for the Bootstrap is", uiOutput(outputId = "CI_bs")),
+          p("95% Confidence Interval for Central Limit Theorem is", uiOutput(outputId = "CI_clt"))
+        )
+      )
+    )
+  )
+)
 
-
-# ===============================================
-#                    SEVER
-# ===============================================
-
+# Define server logic required to draw a histogram
 server <- function(input, output, session) {
   
   # ===============================================
@@ -290,7 +262,8 @@ server <- function(input, output, session) {
             axis.text.y = element_blank(),
             axis.line.y = element_blank(),
             axis.title.x = element_blank())+
-      ggtitle("Sampling Distribution")
+      ggtitle("Sampling Distribution")+
+      xlim(mean(goddf()$s) - 5*sd(goddf()$s), mean(goddf()$s) + 5*sd(goddf()$s))
     
   ) %>% 
     bindEvent(input$god)
@@ -383,21 +356,22 @@ server <- function(input, output, session) {
   
   output$bs_plot <- renderPlot({
     
-      
-      dataframe() %>% 
-        ggplot()+
-        geom_histogram(aes(x = bs,
-                           y = ..density..),
-                       color = "white",
-                       fill = "orangered")+
-        theme_classic(base_size = 18)+
-        xlab(bquote(bar(x)))+
-        ylab("")+
-        theme(axis.title.y = element_blank(),
-              axis.ticks.y = element_blank(),
-              axis.text.y = element_blank(),
-              axis.line.y = element_blank())+
-      ggtitle("Bootstrap Sampling Distribution")
+    
+    dataframe() %>% 
+      ggplot()+
+      geom_histogram(aes(x = bs,
+                         y = ..density..),
+                     color = "white",
+                     fill = "orangered")+
+      theme_classic(base_size = 18)+
+      xlab(bquote(bar(x)))+
+      ylab("")+
+      theme(axis.title.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.text.y = element_blank(),
+            axis.line.y = element_blank())+
+      ggtitle("Bootstrap Sampling Distribution")+
+      xlim(mean(goddf()$s) - 5*sd(goddf()$s), mean(goddf()$s) + 5*sd(goddf()$s))
     
   }) %>% 
     bindEvent(input$sim_bs,
@@ -460,16 +434,17 @@ server <- function(input, output, session) {
     showModal(modalDialog(
       title = "The Central Limit Theorem",
       withMathJax(
-        p("The Central Limit Theorem states that the means of sufficiently large identical and independently distributed ((iid)) random samples, each of size (n), follow a normal curve.
-       Where if $n \\rightarrow \\infty$ then the mean of the sample, $\\bar{x}$, will resemble the mean of the population, $\\mu$. So, with just one sufficiently large sample,
-       we can use the Central Limit Theorem to approximate a sampling distribution:")
+        p("The Central Limit Theorem states that the distibution of the sum of (n) independent and identically distributed ((iid))
+        random vairables become normally distributed as $n \\rightarrow \\infty$.
+        Sample means and sample proportions are both sums of random variables times a constant, so their sampling
+        distributions can be approximated as follows:")
       ),
       withMathJax(
-        div("$$\\mathcal{N}(\\mu = \\bar{x}, \\frac{\\sigma}{\\sqrt{n}} = \\frac{s}{\\sqrt{n}})$$")
+        div("$$\\bar{X} \\sim \\mathcal{N}(\\mu = \\bar{x}, \\sigma = \\frac{s}{\\sqrt{n}})$$"),
+        div("$$\\hat{P} \\sim \\mathcal{N}(\\mu = \\hat{p}, \\sigma = \\sqrt{\\frac{\\hat{p} (1-\\hat{p})}{n}})$$")
       ),
       withMathJax(
-        tags$div("As you can see we have replaced $\\mu$ with $\\bar{x}$ and $\\sigma$ with (s).
-                 If you are interested in the derivation of the standard error, $\\frac{\\sigma}{\\sqrt{n}}$,
+        tags$div("If you are interested in the derivation of the standard error, $\\frac{\\sigma}{\\sqrt{n}}$,
                  please click",
                  tags$a(href = "https://en.wikipedia.org/wiki/Standard_error",
                         "here"), ".")
@@ -479,11 +454,11 @@ server <- function(input, output, session) {
     
   })
   
-
+  
   # ===============================================
   # graph magnum opus
   # ===============================================
-
+  
   output$comp_graph <- renderPlot({
     
     plot <- ggplot()
@@ -496,10 +471,10 @@ server <- function(input, output, session) {
       
       plot <- plot + 
         geom_histogram(data = goddf(),
-                             mapping = aes(x = s,
-                                           y = ..density..),
-                             color = "white",
-                             fill = "purple")+
+                       mapping = aes(x = s,
+                                     y = ..density..),
+                       color = "white",
+                       fill = "purple")+
         geom_histogram(data = dataframe(),
                        mapping = aes(x = bs,
                                      y = ..density..),
@@ -515,10 +490,10 @@ server <- function(input, output, session) {
     } else if(ideal & bs){
       
       plot <- plot + geom_histogram(data = goddf(),
-                             mapping = aes(x = s,
-                                           y = ..density..),
-                             color = "white",
-                             fill = "purple")+
+                                    mapping = aes(x = s,
+                                                  y = ..density..),
+                                    color = "white",
+                                    fill = "purple")+
         geom_histogram(data = dataframe(),
                        mapping = aes(x = bs,
                                      y = ..density..),
@@ -590,9 +565,9 @@ server <- function(input, output, session) {
       theme(axis.title.y = element_blank(),
             axis.ticks.y = element_blank(),
             axis.text.y = element_blank(),
-            axis.line.y = element_blank(),
-            axis.title.x = element_blank())+
-      xlim(mean(dataframe()$bs) - 5*sd(dataframe()$bs), mean(dataframe()$bs) + 5*sd(dataframe()$bs))
+            axis.line.y = element_blank())+
+      xlim(mean(goddf()$s) - 5*sd(goddf()$s), mean(goddf()$s) + 5*sd(goddf()$s))+
+      xlab(bquote(bar(x)))
     
   })
   
@@ -633,8 +608,8 @@ server <- function(input, output, session) {
       
       withMathJax(
         sprintf("$$\\mu = %g \\hspace{1cm} \\sigma = %g$$",
-              round(mean(pop()$right), 2),
-              round(sd(pop()$right), 2))
+                round(mean(pop()$right), 2),
+                round(sd(pop()$right), 2))
       )
       
       
@@ -677,8 +652,26 @@ server <- function(input, output, session) {
     
   })
   
+  # ===============================================
+  # Fastrak Info
+  # ===============================================
+  
+  observeEvent(input$fastrak_info, {
+    
+    showModal(modalDialog(
+      title = "Fastrak Info",
+      h4("Fastrak-simulation"),
+      p("Fastrak-simulation pulls a new sample from the population, computes the bootstrap and CLT for you.
+         After clicking the Fastrak button just scroll down to 'Let's Compare'. "),
+      h4("Fastrak - Confidence Intervals"),
+      p(""),
+      easyClose = TRUE
+    ))
+    
+  })
   
   
 }
 
+# Run the application 
 shinyApp(ui = ui, server = server)
