@@ -1,6 +1,7 @@
 library(shiny)
 library(tidyverse)
 library(shinydashboard)
+library(infer)
 
 # ===============================================
 #                    UI
@@ -155,17 +156,27 @@ ui <- dashboardPage(
       tabBox(
         id = "tabbox2",
         tabPanel(
-          "graph",
-          actionButton(inputId = "ci_bs_sim",
-                       label = "Plot 100 Bootstrap CIs"),
-          plotOutput("bs_CI")
-        ),
-        tabPanel(
           "Confidence Intervals",
           p("Statistics for the population", uiOutput(outputId = "pop_stats")),
-          p("95% Confidence Interval for the Idea World is", uiOutput(outputId = "CI_ideal")),
+          p("95% Confidence Interval for the Ideal World is", uiOutput(outputId = "CI_ideal")),
           p("95% Confidence Interval for the Bootstrap is", uiOutput(outputId = "CI_bs")),
           p("95% Confidence Interval for Central Limit Theorem is", uiOutput(outputId = "CI_clt"))
+        ),
+        tabPanel(
+          "CI CLT graph",
+          p("Here you will draw 100 different samples from the population, compute an approximate Confidence Interval on each,
+            and graph them to see how many capture the truth. "),
+          actionButton(inputId = "ci_sim",
+                       label = "Plot 100 CIs"),
+          plotOutput("CI100")
+        ),
+        tabPanel(
+          "CI bootstrap graph",
+          p("Here you will creat 100 different BS from 100 different samples and compute 100 different CI,
+            we'll then graph them and compare them to the true mean"),
+          actionButton(inputId = "ci_bs_sim",
+                       label = "Plot 100 BS CIs"),
+          plotOutput("CIbs100")
         )
       )
     )
@@ -296,7 +307,6 @@ server <- function(input, output, session) {
   }) %>% 
     bindEvent(input$make_sample,
               input$fast,
-              input$ci_bs_sim,
               ignoreInit = TRUE)
   
   output$empir_data <- renderPlot({
@@ -624,18 +634,22 @@ server <- function(input, output, session) {
       sprintf(
         "$$(%g, %g)$$",
         round(mean(goddf()$s) - 1.96*sd(goddf()$s)/sqrt(input$n), 2),
-        round(mean(goddf()$s) + 1.96*sd(goddf()$s)/sqrt(input$n), 2))
+        round(mean(goddf()$s) + 1.96*sd(goddf()$s)/sqrt(input$n), 2)
+        )
     )
     
   })
   
   output$CI_bs <- renderUI({
     
+    ci_boot <- data.frame(lower = mean(samp()$samp) - (quantile(dataframe()$bs, probs = 0.975) - mean(samp()$samp)),
+                          upper = mean(samp()$samp) - (quantile(dataframe()$bs, probs = 0.025) - mean(samp()$samp)))
+    
     withMathJax(
       sprintf(
         "$$(%g, %g)$$",
-        round(mean(dataframe()$bs - 1.96*sd(dataframe()$bs)/sqrt(input$n)), 2),
-        round(mean(dataframe()$bs + 1.96*sd(dataframe()$bs)/sqrt(input$n)), 2)
+        round(ci_boot[1], 2),
+        round(ci_boot[2], 2)
       )
     )
     
@@ -676,69 +690,152 @@ server <- function(input, output, session) {
   # CI graphs
   # ===============================================
   
-  bs100 <- reactive({
-    
-    bs_trials <- replicate(100,
-                    replicate(input$bs_samps,
-                              mean(sample(samp()$samp, input$n, replace = TRUE))))
-    
-    df <- data.frame(bs_trials)
-    
-    df2 <- data.frame(trials = trials,
-                      mean = colMeans(df),
-                      sd = sapply(df, sd))
-    
-    lower <- df2$mean - (1.96 * df2$sd /10)
-    upper <- df2$mean + (1.96 * df2$sd /10)
+  cis100 <- reactive({
     
     if(input$skew == "left-skew"){
       
+      samp100_means <- replicate(100, mean(sample(pop()$left, input$n, replace = T)))
+      
+      lower <- samp100_means - 1.96 * sd(pop()$left)/sqrt(input$n)
+      upper <- samp100_means + 1.96 * sd(pop()$left)/sqrt(input$n)
+      trials <- 1:100
       cover <- (mean(pop()$left) >= lower) & (mean(pop()$left) <= upper)
       
     }else if(input$skew == "right-skew"){
       
+      samp100_means <- replicate(100, mean(sample(pop()$right, input$n, replace = T)))
+      
+      lower <- samp100_means - 1.96 * sd(pop()$right)/sqrt(input$n)
+      upper <- samp100_means + 1.96 * sd(pop()$right)/sqrt(input$n)
+      trials <- 1:100
       cover <- (mean(pop()$right) >= lower) & (mean(pop()$right) <= upper)
       
     }
     
-    df3 <- data.frame(trials = trials,
-                      upper = upper,
-                      lower = lower,
-                      cover = cover)
+    CIs <- data.frame(trials, lower, upper, cover)
     
-    df3
+    CIs
+    
+  }) %>% 
+    bindEvent(input$ci_sim)
+  
+  
+  output$CI100 <- renderPlot({
+    
+    plot <- cis100() %>% 
+        ggplot(aes(y = trials))+
+        geom_segment(aes(x = lower, xend = upper, yend = trials, color = cover),
+                     show.legend=FALSE)+
+        theme_classic()+
+        labs(x=expression(bar(x)), y = "Iteration")
+    
+    if(input$skew == "right-skew"){
+      
+      plot <- plot+
+        annotate("segment", x=mean(pop()$right), xend=mean(pop()$right),
+                 y=0, yend=101, color="black")
+      
+    }else if(input$skew == "left-skew"){
+      
+      plot <- plot+
+        annotate("segment", x=mean(pop()$left), xend=mean(pop()$left),
+                 y=0, yend=101, color="black")
+      
+    }
+    
+    plot
+    
+  })
+  
+  
+  bs_cis <- reactive({
+    
+    if(input$skew == "right"){
+      
+      X <- replicate(100, sample(pop()$right, 100, replace = T))
+      X <- data.frame(X)
+      
+      X_bar <- colMeans(X)
+      
+      boot_function <- function(X){
+        
+        replicate(100, mean(sample(X, 100, replace = TRUE)))
+        
+      }
+      
+      boot <- apply(X, 2, boot_function )
+      df_boot <- data.frame(boot)
+      
+      quantiles <- apply(df_boot, 2, quantile, probs = c(0.025, 0.975))
+      
+      upper <- X_bar - (quantiles[1,] - X_bar)
+      lower <- X_bar - (quantiles[2,] - X_bar)
+      trials <- 1:100
+      cover <- (mean(pop()$right) >= lower) & (mean(pop()$right) <= upper)
+      
+    }else if(input$skew == "left"){
+      
+      X <- replicate(100,sample(pop()$left, 100, replace = T))
+      X <- data.frame(X) 
+      
+      X_bar <- colMeans(X)
+      
+      boot_function <- function(X){
+        
+        replicate(100, mean(sample(X, 100, replace = TRUE)))
+        
+      }
+      
+      boot <- apply(X, 2, boot_function )
+      df_boot <- data.frame(boot)
+      
+      quantiles <- apply(df_boot, 2, quantile, probs = c(0.025, 0.975))
+      
+      upper <- X_bar - (quantiles[1,] - X_bar)
+      lower <- X_bar - (quantiles[2,] - X_bar)
+      trials <- 1:100
+      cover <- (mean(pop()$left) >= lower) & (mean(pop()$left) <= upper)
+      
+    }
+    
+    
+    df <- data.frame(upper, lower, trials, cover)
+    
+    df
+    
     
   }) %>% 
     bindEvent(input$ci_bs_sim)
   
   
-  output$bs_CI <- renderPlot({
+  output$CIbs100 <- renderPlot({
     
-    if(input$skew == "left-skew"){
+    bsplot <- bs_cis() %>% 
+      ggplot(aes(y = trials))+
+      geom_segment(aes(x = lower, xend = upper, yend = trials, color = cover),
+                   show.legend=FALSE)+
+      theme_classic()+
+      labs(x=expression(bar(x)), y = "Iteration")
+    
+    if(input$skew == "right-skew"){
       
-      bs100() %>% 
-        ggplot(aes(y = trials))+
-        geom_segment(aes(x=lower, y=trials, xend=upper, yend=trials, color= cover), 
-                     show.legend=FALSE) +
-        annotate("segment", x=mean(pop()$left), xend=mean(pop()$left),
-                 y=0, yend=101, color="black") +
-        labs(x=expression(bar(x)), y = "Iteration") +
-        theme_classic()
-      
-    }else if(input$skew == "right-skew"){
-      
-      bs100() %>% 
-        ggplot(aes(y = trials))+
-        geom_segment(aes(x=lower, y=trials, xend=upper, yend=trials, color= cover), 
-                     show.legend=FALSE) +
+      bsplot <- bsplot +
         annotate("segment", x=mean(pop()$right), xend=mean(pop()$right),
-                 y=0, yend=101, color="black") +
-        labs(x=expression(bar(x)), y = "Iteration") +
-        theme_classic()
+                 y=0, yend=101, color="black")
+      
+    }else if(input$skew == "left-skew"){
+      
+      bsplot <- bsplot+
+        annotate("segment", x=mean(pop()$left), xend=mean(pop()$left),
+                 y=0, yend=101, color="black")
+      
     }
     
+    bsplot
     
-  })
+    
+  }) %>% 
+    bindEvent(input$ci_bs_sim)
   
   
 }
