@@ -2,6 +2,7 @@ library(shiny)
 library(tidyverse)
 library(shinydashboard)
 library(infer)
+library(shinycssloaders)
 
 # ===============================================
 #                    UI
@@ -98,7 +99,7 @@ ui <- dashboardPage(
           h5("If you had unlimited resources, funding, time, etc.
               you would be able to draw as many samples as you would like from this population.
               Here is ten thousand sample means."),
-          plotOutput(outputId = "godmode"),
+          withSpinner(plotOutput(outputId = "godmode")),
           actionButton(inputId = "god",
                        label = "Simulate ideal expirement"))
     ),
@@ -121,8 +122,14 @@ ui <- dashboardPage(
               }
               });"
       ),
+      
+      # ===============================================
+      # UI
+      # ===============================================
+      
+      
       box(title = 'Empirical Data', collapsible = TRUE,
-          plotOutput(outputId = "empir_data"),
+          withSpinner(plotOutput(outputId = "empir_data")),
           actionButton(inputId = "make_sample",
                        label = "see a sample")),
       tabBox(id = "tabbox1",
@@ -130,14 +137,14 @@ ui <- dashboardPage(
                       p("Your bootstrap sample size:", textOutput("bs_size", inline = T)),
                       actionButton(inputId = "sim_bs",
                                    label = "Compute the Bootstrap"),
-                      plotOutput(outputId = "bs_plot"),
+                      withSpinner(plotOutput(outputId = "bs_plot")),
                       p(uiOutput(outputId = "bs_stats"))),
              tabPanel("Central Limit Theorem",
                       actionButton(inputId = "sim_clt",
                                    label = "Compute the Central Limit Theorem"),
                       br(),
                       p("The CLT follows a normal distribution:" , uiOutput(outputId = "clt_norm")),
-                      plotOutput("CLT"),
+                      withSpinner(plotOutput("CLT")),
                       actionButton(inputId = "CLT_info",
                                    label = "",
                                    icon = icon(name = "info-circle"),
@@ -152,7 +159,7 @@ ui <- dashboardPage(
     ),
     fluidRow(
       box(title = "Let's Compare", collapsible = TRUE,
-          plotOutput("comp_graph")),
+      plotOutput("comp_graph")),
       tabBox(
         id = "tabbox2",
         tabPanel(
@@ -160,7 +167,17 @@ ui <- dashboardPage(
           p("Statistics for the population", uiOutput(outputId = "pop_stats")),
           p("95% Confidence Interval for the Ideal World is", uiOutput(outputId = "CI_ideal")),
           p("95% Confidence Interval for the Bootstrap is", uiOutput(outputId = "CI_bs")),
-          p("95% Confidence Interval for Central Limit Theorem is", uiOutput(outputId = "CI_clt"))
+          p("95% Confidence Interval for Central Limit Theorem is", uiOutput(outputId = "CI_clt")),
+          actionButton(inputId = "CI_info",
+                       label = "",
+                       icon = icon(name = "info-circle"),
+                       style = "background-color:#FFFFFF;
+                                        color:#000000;
+                                        border-color:#BEBEBE;
+                                        border-style:none;
+                                        border-width:1px;
+                                        border-radius:100%;
+                                        font-size:25px;")
         ),
         tabPanel(
           "CI CLT graph",
@@ -168,15 +185,15 @@ ui <- dashboardPage(
             and graph them to see how many capture the truth. "),
           actionButton(inputId = "ci_sim",
                        label = "Plot 100 CIs"),
-          plotOutput("CI100")
+          withSpinner(plotOutput("CI100"))
         ),
         tabPanel(
           "CI bootstrap graph",
-          p("Here you will creat 100 different BS from 100 different samples and compute 100 different CI,
-            we'll then graph them and compare them to the true mean"),
+          p("Here you will create 100 different BS from 100 different samples and compute 100 different CIs,
+            we'll then graph them and compare them to the true mean."),
           actionButton(inputId = "ci_bs_sim",
-                       label = "Plot 100 BS CIs"),
-          plotOutput("CIbs100")
+                       label = "Plot 100 CIs"),
+          withSpinner(plotOutput("CIbs100"))
         )
       )
     )
@@ -591,15 +608,37 @@ server <- function(input, output, session) {
     
     showModal(modalDialog(
       title = "Confidence Interval",
-      div("A formula for the 95% Confidence Interval"),
       withMathJax(
-        div("$$(\\mu - 1.96\\frac{\\sigma}{\\sqrt{n}}, \\mu + 1.96\\frac{\\sigma}{\\sqrt{n}})$$")
+        div("A confidence interval for the population mean is a random interval calculated from the sample mean that contains
+            the population mean within a certain probability. For a 95% confidence interval, we use our previous knowledge from the
+            CLT and the empirical rule. The CLT tells us that the sample mean, $\\bar{X}$, follows a normal distribution as $n \\rightarrow \\infty$.
+            Part of the empirical rule states that 95% of the area underneath a normal curve is within 1.96 standard deviation of the mean."),
+        div("Here is what we have so far:")
+        ),
+        withMathJax(
+          div("$$(\\mu - 1.96\\frac{\\sigma}{\\sqrt{n}}, \\mu + 1.96\\frac{\\sigma}{\\sqrt{n}})$$")
+        ),
+      withMathJax(
+        div("An issue here is that we usually do not know what $\\sigma$ is so we estimate it with $s$, the sample standard deviation:")
       ),
-      div("Since the Sampling Distribution follows a Normal Curve [Cenral Limit Theorem],
-          we can use what we know of the Normal Curve to give us an interval estimate of the population parameter.
-          We know from the Empircal Rule that 95% of the area underneath the Normal Curve is within 1.96 standard deviations
-          of the mean and the sample mean will resemble the population mean [same is said of the standard deviation].
-          To get our interval, we follow the formula above and replace $\\mu$ with the sample mean, $\\bar{x}$ and $\\sigma$ with the sample standard deviation, $s$."),
+      withMathJax(
+        div("$$s = \\sqrt{\\frac{1}{n-1}\\sum_{i=1}^{n} (x_i - \\bar{x})^2}$$")
+      ),
+      withMathJax(
+        div("And because we are using the estimator $s$, our confidence interval now uses the $t$ distribution. It should be noted
+        that for large $n$ the difference between using the inverse $t$ CDF and the inverse normal CDF is negligable. Rule of thumb for this
+        is $n \\geq 30$."),
+        div("Here is our 95% confidence intervals for $\\mu$, with $n \\le 30$:")
+      ),
+      withMathJax(
+        div("$$(\\bar{X} - t_{n-1}^{-1}(.95)\\frac{s}{\\sqrt{n}}, \\bar{X} + t_{n-1}^{-1}(.95)\\frac{s}{\\sqrt{n}})$$")
+      ),
+      withMathJax(
+        div("And $n \\geq 30$")
+      ),
+      withMathJax(
+        div("$$(\\bar{X} - 1.96\\frac{s}{\\sqrt{n}}, \\bar{X} + 1.96\\frac{s}{\\sqrt{n}})$$")
+      ),
       easyClose = TRUE
     ))
     
@@ -660,8 +699,8 @@ server <- function(input, output, session) {
     withMathJax(
       sprintf(
         "$$(%g, %g)$$",
-        round(mean(samp()$samp - 1.96*sd(samp()$samp)/sqrt(input$n)), 2),
-        round(mean(samp()$samp + 1.96*sd(samp()$samp)/sqrt(input$n)), 2)
+        round(mean(samp()$samp - qt(.95, df = input$n -1)*sd(samp()$samp)/sqrt(input$n)), 2),
+        round(mean(samp()$samp + qt(.95, df = input$n -1)*sd(samp()$samp)/sqrt(input$n)), 2)
       )
     )
     
@@ -676,10 +715,8 @@ server <- function(input, output, session) {
     showModal(modalDialog(
       title = "Fastrak Info",
       h4("Fastrak-simulation"),
-      p("Fastrak-simulation pulls a new sample from the population, computes the bootstrap and CLT for you.
+      p("Fastrak-simulation pulls a new sample from the population, computes the Bootstrap and CLT for you.
          After clicking the Fastrak button just scroll down to 'Let's Compare'. "),
-      h4("Fastrak - Confidence Intervals"),
-      p(""),
       easyClose = TRUE
     ))
     
@@ -750,7 +787,7 @@ server <- function(input, output, session) {
   
   bs_cis <- reactive({
     
-    if(input$skew == "right"){
+    if(input$skew == "right-skew"){
       
       X <- replicate(100, sample(pop()$right, 100, replace = T))
       X <- data.frame(X)
@@ -773,7 +810,7 @@ server <- function(input, output, session) {
       trials <- 1:100
       cover <- (mean(pop()$right) >= lower) & (mean(pop()$right) <= upper)
       
-    }else if(input$skew == "left"){
+    }else if(input$skew == "left-skew"){
       
       X <- replicate(100,sample(pop()$left, 100, replace = T))
       X <- data.frame(X) 
