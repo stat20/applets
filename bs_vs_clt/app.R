@@ -639,6 +639,11 @@ server <- function(input, output, session) {
       withMathJax(
         div("$$(\\bar{X} - 1.96\\frac{s}{\\sqrt{n}}, \\bar{X} + 1.96\\frac{s}{\\sqrt{n}})$$")
       ),
+      withMathJax(
+        tags$div("please visit",
+                 tags$a(href = "https://en.wikipedia.org/wiki/Student%27s_t-distribution#:~:text=In%20probability%20and%20statistics%2C%20Student's,around%20zero%20and%20bell%2Dshaped.",
+                        "here"), "for more information on the $t$ distribution.")
+      ),
       easyClose = TRUE
     ))
     
@@ -699,8 +704,8 @@ server <- function(input, output, session) {
     withMathJax(
       sprintf(
         "$$(%g, %g)$$",
-        round(mean(samp()$samp - qt(.95, df = input$n -1)*sd(samp()$samp)/sqrt(input$n)), 2),
-        round(mean(samp()$samp + qt(.95, df = input$n -1)*sd(samp()$samp)/sqrt(input$n)), 2)
+        round(mean(samp()$samp - qt(.975, df = input$n-1)*sd(samp()$samp)/sqrt(input$n)), 2),
+        round(mean(samp()$samp + qt(.975, df = input$n-1)*sd(samp()$samp)/sqrt(input$n)), 2)
       )
     )
     
@@ -733,8 +738,8 @@ server <- function(input, output, session) {
       
       samp100_means <- replicate(100, mean(sample(pop()$left, input$n, replace = T)))
       
-      lower <- samp100_means - 1.96 * sd(pop()$left)/sqrt(input$n)
-      upper <- samp100_means + 1.96 * sd(pop()$left)/sqrt(input$n)
+      lower <- samp100_means - qt(.975, df = input$n-1) * sd(pop()$left)/sqrt(input$n)
+      upper <- samp100_means + qt(.975, df = input$n-1) * sd(pop()$left)/sqrt(input$n)
       trials <- 1:100
       cover <- (mean(pop()$left) >= lower) & (mean(pop()$left) <= upper)
       
@@ -742,8 +747,8 @@ server <- function(input, output, session) {
       
       samp100_means <- replicate(100, mean(sample(pop()$right, input$n, replace = T)))
       
-      lower <- samp100_means - 1.96 * sd(pop()$right)/sqrt(input$n)
-      upper <- samp100_means + 1.96 * sd(pop()$right)/sqrt(input$n)
+      lower <- samp100_means - qt(.975, df = input$n-1) * sd(pop()$right)/sqrt(input$n)
+      upper <- samp100_means + qt(.975, df = input$n-1) * sd(pop()$right)/sqrt(input$n)
       trials <- 1:100
       cover <- (mean(pop()$right) >= lower) & (mean(pop()$right) <= upper)
       
