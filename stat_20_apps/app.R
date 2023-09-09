@@ -16,7 +16,14 @@ ui <- dashboardPage(
       menuItem("Law of Large Numbers",
                tabName = "LLN"),
       menuItem("Hypothesis Testing",
-               tabName = "HT")
+               tabName = "HT"),
+      menuItem("Distributions",
+               menuSubItem("Uniform",
+                           tabName = "Uniform"),
+               menuSubItem("Binomial",
+                           tabName = "Bin"),
+               menuSubItem("Normal",
+                           tabName = "norm"))
     )
   ),
   
@@ -102,13 +109,68 @@ ui <- dashboardPage(
           )
         )
         
-      )
+      ),
+      tabItem(tabName = "Uniform",
+              fluidRow(
+                
+                # ===============================================
+                # Latex help
+                # section below allows in-line LaTeX via $ in mathjax. Replace less-than-sign with < 
+                # and grater-than-sign with >
+                # unfortunately I can't figure out how to use () just as a parenthesis so I have to opt
+                # for [] 
+                # ===============================================
+                
+                withMathJax(),
+                tags$script("
+              MathJax.Hub.Config({
+              tex2jax: {
+              inlineMath: [['$','$'], ['\\(','\\)']],
+              processEscapes: true
+              }
+              });"),
+                
+                # ===============================================
+                #      UNIFORM UI
+                # ===============================================
+                
+                tabBox(id = "tabbox1",
+                       tabPanel("PDF",
+                                plotOutput("unif_pdf_plot")
+                       ),
+                       tabPanel("CDF",
+                                plotOutput("unif_cdf_plot")
+                       ),
+                       width = 8
+                ),
+                box(
+                  width = 4,
+                  p(uiOutput("unif_dist")),
+                  numericInput(inputId = "a",
+                               label = "a",
+                               value = 5),
+                  numericInput(inputId = "b",
+                               label = "b",
+                               value = 10)
+                )
+              ),
+              fluidRow(
+                box(
+                  width = 4,
+                  uiOutput("unif_pdf"),
+                  uiOutput("unif_cdf"),
+                  uiOutput("unif_exp"),
+                  uiOutput("unif_var")
+                ),
+                box(
+                  width = 8
+                )
+              )
+      ),
+      tabItem(tabName = "Bin",
+              box())
     )
   )
-  
-  
-  
-  
 )
 
 
@@ -153,7 +215,7 @@ server <- function(input, output){
   }) %>% 
     bindEvent(input$go_LLN)
   
- 
+  
   
   # ===============================================
   #          HYPOTHESIS TESTING SERVER
@@ -360,7 +422,119 @@ server <- function(input, output){
     
   })
   
+  # ===============================================
+  #          UNIF server
+  # ===============================================
   
+  
+  output$unif_dist <- renderUI({
+    
+    withMathJax(
+      sprintf("$$Uniform(a = %g, b = %g)$$",
+              input$a,
+              input$b)
+    )
+    
+  })
+  
+  output$unif_pdf_plot <- renderPlot({
+    
+    x <- seq(from = input$a-2,
+             to = input$b+2,
+             by=0.01)
+    
+    dens <- dunif(x, min = input$a, max = input$b)
+    
+    df <- data.frame(x = x,dens = dens)
+    
+    df %>% 
+      ggplot(aes(x = x,
+                 y = dens))+
+      geom_line()+
+      ylim(0,1)+
+      theme_classic()
+    
+    
+  })
+  
+  unif_df <- reactive({
+    
+    a <- input$a
+    b <- input$b
+    
+    x_x <- seq(from = a,
+               to = b,
+               by = 0.01)
+    
+    cdf_x <- (x_x - a)/(b-a)
+    xxx <- seq(from = a,
+               to = b ,
+               length.out = length(cdf_x))
+    
+    udf <- data.frame(cdf_x,
+                      xxx)
+    udf
+    
+  })
+  
+  output$unif_cdf_plot <- renderPlot({
+    
+    
+    unif_df() %>% 
+      ggplot(aes(x = xxx,
+                 y = cdf_x))+
+      geom_line(size = 1)+
+      theme_classic()+
+      xlim(input$a-2,
+           input$b+2)+
+      geom_segment(aes(y=0, x=input$a -2, yend = 0, xend=input$a),
+                   size = 1)+
+      geom_segment(aes(y = 1, x = input$b, yend = 1, xend = input$b+2),
+                   size = 1)
+    
+    
+  })
+  
+  output$unif_pdf <- renderUI({
+    
+    withMathJax(
+      sprintf("$$PDF: \\frac{1}{b-a} = \\frac{1}{%g - %g}$$",
+              input$b,
+              input$a)
+    )
+    
+  })
+  
+  output$unif_cdf <- renderUI({
+    
+    withMathJax(
+      sprintf("$$CDF: \\frac{x-a}{b-a} = \\frac{x-%g}{%g-%g}$$",
+              input$a,
+              input$b,
+              input$a)
+    )
+    
+  })
+  
+  output$unif_exp <- renderUI({
+    
+    withMathJax(
+      sprintf("$$Expectation: \\frac{a+b}{2} = \\frac{%g + %g}{2}$$",
+              input$a,
+              input$b)
+    )
+    
+  })
+  
+  output$unif_var <- renderUI({
+    
+    withMathJax(
+      sprintf("$$Variance: \\frac{(b -a)^2}{12} = \\frac{(%g - %g)^2}{12}$$",
+              input$b,
+              input$a)
+    )
+    
+  })
   
 }
 
